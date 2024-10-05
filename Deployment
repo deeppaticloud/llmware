@@ -1,0 +1,99 @@
+To create a reference Kubernetes configuration and a 'fast start' script for deploying LLMWare in a Kubernetes cluster, you can start by converting the existing Docker Compose files to Kubernetes YAML files. Here’s an example of how you can convert a Docker Compose service to a Kubernetes Deployment and Service:
+
+### Step 1: Convert Docker Compose to Kubernetes
+
+#### Docker Compose Service (Example)
+```yaml
+version: "3.5"
+services:
+  mongodb:
+    container_name: mongodb
+    image: mongo:5.0.10
+    volumes:
+      - llmware-mongodb:/data/db
+    ports:
+      - '27017:27017'
+```
+
+#### Kubernetes Deployment and Service
+```yaml
+# mongodb-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:5.0.10
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - mountPath: /data/db
+          name: mongodb-storage
+      volumes:
+      - name: mongodb-storage
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongodb
+```
+
+```yaml
+# mongodb-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### Step 2: Create a Fast Start Script
+Create a script to deploy these configurations to your Kubernetes cluster.
+
+```bash
+#!/bin/bash
+
+# Apply PersistentVolumeClaim
+kubectl apply -f mongodb-pvc.yaml
+
+# Deploy MongoDB Deployment and Service
+kubectl apply -f mongodb-deployment.yaml
+
+echo "MongoDB deployment and service applied successfully."
+```
+
+### Step 3: Repeat for Other Services
+Repeat the conversion process for other services defined in your Docker Compose files.
+
+### Deployment
+Run the fast start script to deploy LLMWare in your Kubernetes cluster:
+```bash
+./fast_start.sh
+```
+
+This example shows how to convert a single service (`mongodb`) from Docker Compose to Kubernetes. You will need to repeat this process for all other services defined in your Docker Compose files to fully deploy LLMWare in a Kubernetes cluster.
